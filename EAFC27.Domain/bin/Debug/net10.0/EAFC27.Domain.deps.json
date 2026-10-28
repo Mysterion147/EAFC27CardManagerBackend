@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "EAFC27.Domain/1.0.0": {
+        "runtime": {
+          "EAFC27.Domain.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "EAFC27.Domain/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
