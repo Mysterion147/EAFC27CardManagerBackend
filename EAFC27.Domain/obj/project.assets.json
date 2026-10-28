@@ -13,11 +13,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\joaop\\OneDrive\\Desktop\\FC27 Card Manager\\EAFC27.Domain\\EAFC27.Domain.csproj",
+      "projectUniqueName": "C:\\Projetos\\FC27 Card Manager\\EAFC27.Domain\\EAFC27.Domain.csproj",
       "projectName": "EAFC27.Domain",
-      "projectPath": "C:\\Users\\joaop\\OneDrive\\Desktop\\FC27 Card Manager\\EAFC27.Domain\\EAFC27.Domain.csproj",
+      "projectPath": "C:\\Projetos\\FC27 Card Manager\\EAFC27.Domain\\EAFC27.Domain.csproj",
       "packagesPath": "C:\\Users\\joaop\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\joaop\\OneDrive\\Desktop\\FC27 Card Manager\\EAFC27.Domain\\obj\\",
+      "outputPath": "C:\\Projetos\\FC27 Card Manager\\EAFC27.Domain\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\joaop\\AppData\\Roaming\\NuGet\\NuGet.Config"
