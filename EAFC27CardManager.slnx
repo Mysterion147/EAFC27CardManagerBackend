@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="EAFC27.API/EAFC27.API.csproj" />
+  <Project Path="EAFC27.Application/EAFC27.Application.csproj" />
+  <Project Path="EAFC27.Domain/EAFC27.Domain.csproj" />
+  <Project Path="EAFC27.Infrastructure/EAFC27.Infrastructure.csproj" />
+</Solution>

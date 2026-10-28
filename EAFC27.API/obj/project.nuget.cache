@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "SQfzLF2Bx6o=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\joaop\\OneDrive\\Desktop\\FC27 Card Manager\\EAFC27.API\\EAFC27.API.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\joaop\\.nuget\\packages\\microsoft.aspnetcore.openapi\\10.0.8\\microsoft.aspnetcore.openapi.10.0.8.nupkg.sha512",
+    "C:\\Users\\joaop\\.nuget\\packages\\microsoft.openapi\\2.7.5\\microsoft.openapi.2.7.5.nupkg.sha512"
+  ],
+  "logs": []
+}
