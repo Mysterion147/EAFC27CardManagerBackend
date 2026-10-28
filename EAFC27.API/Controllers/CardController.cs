@@ -1,10 +1,12 @@
 using EAFC27.Application.DTOs;
 using EAFC27.Infrastructure.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace EAFC27.API.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class CardsController : ControllerBase
@@ -17,6 +19,7 @@ public class CardsController : ControllerBase
     }
 
     // GET api/cards
+    [AllowAnonymous]
     [HttpGet]
     public async Task<ActionResult<IEnumerable<CardResponseDto>>> GetCards(
         [FromQuery] string? name,

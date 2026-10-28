@@ -18,6 +18,10 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        modelBuilder.Entity<User>()
+        .HasIndex(u => u.Email)
+        .IsUnique();
+
         // RNF05
         modelBuilder.Entity<PriceSnapshot>()
             .HasIndex(p => new { p.CardId, p.RecordedAt });
