@@ -7,6 +7,6 @@ public class PriceSnapshot
     public Card Card { get; set; } = null!;
     
     public int Price { get; set; }
-    public string Source { get; set; } = string.Empty; // "manual" or "simulated"
+    public string Source { get; set; } = "manual"; // "manual" or "simulated"
     public DateTime RecordedAt { get; set; } = DateTime.UtcNow;
 }

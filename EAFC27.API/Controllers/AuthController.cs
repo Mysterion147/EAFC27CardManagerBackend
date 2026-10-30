@@ -1,6 +1,7 @@
 using EAFC27.Application.DTOs;
 using EAFC27.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace EAFC27.API.Controllers;
 
@@ -27,6 +28,10 @@ public class AuthController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+        catch (DbUpdateException)
+        {
+            return Conflict(new { message = "This email is already in use." });
         }
     }
 

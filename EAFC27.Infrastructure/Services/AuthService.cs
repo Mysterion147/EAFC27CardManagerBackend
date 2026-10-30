@@ -29,7 +29,7 @@ public class AuthService : IAuthService
             .AnyAsync(u => u.Email.ToLower() == dto.Email.ToLower());
 
         if (existingUser)
-            throw new InvalidOperationException("Este e-mail já está em uso.");
+            throw new InvalidOperationException("This e-mail is already registered.");
 
         var user = new User
         {
@@ -58,7 +58,7 @@ public class AuthService : IAuthService
             .FirstOrDefaultAsync(u => u.Email.ToLower() == dto.Email.ToLower());
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-            throw new UnauthorizedAccessException("E-mail ou senha inválidos.");
+            throw new UnauthorizedAccessException("Invalid e-mail or password.");
 
         var token = GenerateJwtToken(user);
 

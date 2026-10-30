@@ -14,8 +14,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<ICardSeederService, CardSeederService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IWatchlistService, WatchlistService>();
+builder.Services.AddScoped<IPriceService, PriceService>();
 
-// Configure JWT authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secret = jwtSettings["Secret"]!;
 
@@ -53,7 +54,7 @@ builder.Services.AddSwaggerGen(c =>
         Description = "Informe apenas o token JWT (o prefixo 'Bearer ' é adicionado automaticamente).",
         Name = "Authorization",
         In = ParameterLocation.Header,
-        Type = SecuritySchemeType.Http,   // Http em vez de ApiKey
+        Type = SecuritySchemeType.Http,
         Scheme = "bearer",
         BearerFormat = "JWT"
     });

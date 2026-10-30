@@ -1,10 +1,8 @@
 using System.Security.Claims;
 using EAFC27.Application.DTOs;
-using EAFC27.Domain.Entities;
-using EAFC27.Infrastructure.Data;
+using EAFC27.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace EAFC27.API.Controllers;
 
@@ -13,11 +11,12 @@ namespace EAFC27.API.Controllers;
 [Route("api/[controller]")]
 public class WatchlistController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly IWatchlistService _watchlistService;
 
-    public WatchlistController(AppDbContext context)
+    // Injeção de dependência do serviço
+    public WatchlistController(IWatchlistService watchlistService)
     {
-        _context = context;
+        _watchlistService = watchlistService;
     }
 
     private Guid GetUserId()
@@ -31,26 +30,7 @@ public class WatchlistController : ControllerBase
     public async Task<ActionResult<IEnumerable<WatchlistItemResponseDto>>> GetUserWatchlist()
     {
         var userId = GetUserId();
-
-        var items = await _context.WatchlistItems
-            .Where(w => w.UserId == userId)
-            .Include(w => w.Card)
-            .AsNoTracking()
-            .Select(w => new WatchlistItemResponseDto
-            {
-                Id = w.Id,
-                CardId = w.CardId,
-                CardName = w.Card.Name,
-                Overall = w.Card.Overall,
-                Position = w.Card.Position,
-                Club = w.Card.Club,
-                Rarity = w.Card.Rarity,
-                TargetBuyPrice = w.BuyTarget,
-                TargetSellPrice = w.SellTarget,
-                CreatedAt = w.CreatedAt
-            })
-            .ToListAsync();
-
+        var items = await _watchlistService.GetUserWatchlistAsync(userId);
         return Ok(items);
     }
 
@@ -58,65 +38,65 @@ public class WatchlistController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<WatchlistItemResponseDto>> AddToWatchlist([FromBody] CreateWatchlistDto dto)
     {
-        var userId = GetUserId();
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
 
-        // Verifica se a carta existe no catálogo
-        var card = await _context.Cards.FindAsync(dto.CardId);
-        if (card == null)
-            return NotFound(new { message = "Carta não encontrada no catálogo." });
-
-        // Verifica se já existe na watchlist do utilizador
-        var alreadyExists = await _context.WatchlistItems
-            .AnyAsync(w => w.UserId == userId && w.CardId == dto.CardId);
-
-        if (alreadyExists)
-            return BadRequest(new { message = "Esta carta já se encontra na sua watchlist." });
-
-        var watchlistItem = new WatchlistItem
+        try
         {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            CardId = dto.CardId,
-            BuyTarget = dto.TargetBuyPrice,
-            SellTarget = dto.TargetSellPrice,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        await _context.WatchlistItems.AddAsync(watchlistItem);
-        await _context.SaveChangesAsync();
-
-        var response = new WatchlistItemResponseDto
+            var userId = GetUserId();
+            var result = await _watchlistService.AddToWatchlistAsync(userId, dto);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
         {
-            Id = watchlistItem.Id,
-            CardId = card.Id,
-            CardName = card.Name,
-            Overall = card.Overall,
-            Position = card.Position,
-            Club = card.Club,
-            Rarity = card.Rarity,
-            TargetBuyPrice = watchlistItem.BuyTarget,
-            TargetSellPrice = watchlistItem.SellTarget,
-            CreatedAt = watchlistItem.CreatedAt
-        };
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+        {
+            return Conflict(new { message = "Esta carta já se encontra na sua watchlist." });
+        }
+    }
 
-        return Ok(response);
+    // PUT: api/Watchlist/{id}
+    [HttpPut("{id:guid}")]
+    public async Task<ActionResult<WatchlistItemResponseDto>> UpdateWatchlist(Guid id, [FromBody] UpdateWatchlistDto dto) // id of the card on the watchlist, not the cardId itself
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
+        {
+            var userId = GetUserId();
+            var result = await _watchlistService.UpdateWatchlistAsync(userId, id, dto);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     // DELETE: api/Watchlist/{id}
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> RemoveFromWatchlist(Guid id)
     {
-        var userId = GetUserId();
-
-        var item = await _context.WatchlistItems
-            .FirstOrDefaultAsync(w => w.Id == id && w.UserId == userId);
-
-        if (item == null)
-            return NotFound(new { message = "Item da watchlist não encontrado." });
-
-        _context.WatchlistItems.Remove(item);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
+        try
+        {
+            var userId = GetUserId();
+            await _watchlistService.RemoveFromWatchlistAsync(userId, id);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 }
