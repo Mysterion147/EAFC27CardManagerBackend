@@ -13,7 +13,7 @@ public class WatchlistController : ControllerBase
 {
     private readonly IWatchlistService _watchlistService;
 
-    // Injeção de dependência do serviço
+    // Service injection for the watchlist service
     public WatchlistController(IWatchlistService watchlistService)
     {
         _watchlistService = watchlistService;
@@ -27,10 +27,10 @@ public class WatchlistController : ControllerBase
 
     // GET: api/Watchlist
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<WatchlistItemResponseDto>>> GetUserWatchlist([FromQuery] string? sortBy) // name, price, change
+    public async Task<ActionResult<IEnumerable<WatchlistItemResponseDto>>> GetUserWatchlist([FromQuery] string? sortBy)
     {
         var userId = GetUserId();
-        var items = await _watchlistService.GetUserWatchlistAsync(userId);
+        var items = await _watchlistService.GetUserWatchlistAsync(userId, sortBy);
         return Ok(items);
     }
 
@@ -57,7 +57,7 @@ public class WatchlistController : ControllerBase
         }
         catch (Microsoft.EntityFrameworkCore.DbUpdateException)
         {
-            return Conflict(new { message = "Esta carta já se encontra na sua watchlist." });
+            return Conflict(new { message = "This card is already in your watchlist." });
         }
     }
 

@@ -17,32 +17,54 @@ public class WatchlistService : IWatchlistService
 
     public async Task<IEnumerable<WatchlistItemResponseDto>> GetUserWatchlistAsync(Guid userId, string? sortBy = null)
     {
-        var items = await _context.WatchlistItems
+        var watchlistItems = await _context.WatchlistItems
             .Where(w => w.UserId == userId)
             .Include(w => w.Card)
             .AsNoTracking()
             .ToListAsync();
 
-        var result = new List<WatchlistItemResponseDto>();
+        if (!watchlistItems.Any())
+            return new List<WatchlistItemResponseDto>();
+
+        var cardIds = watchlistItems.Select(w => w.CardId).Distinct().ToList();
+
         var now = DateTime.UtcNow;
         var cutoff24h = now.AddHours(-24);
 
-        foreach (var w in items)
-        {
-            var lastSnapshot = await _context.PriceSnapshots
-                .Where(p => p.CardId == w.CardId)
-                .OrderByDescending(p => p.RecordedAt)
-                .FirstOrDefaultAsync();
+        var snapshots = await _context.PriceSnapshots
+            .Where(p => cardIds.Contains(p.CardId) && p.RecordedAt >= cutoff24h)
+            .OrderByDescending(p => p.RecordedAt)
+            .AsNoTracking()
+            .ToListAsync();
 
-            var snapshot24h = await _context.PriceSnapshots
-                .Where(p => p.CardId == w.CardId && p.RecordedAt <= cutoff24h)
-                .OrderByDescending(p => p.RecordedAt)
-                .FirstOrDefaultAsync();
+        var missingCardIds = cardIds.Except(snapshots.Select(s => s.CardId).Distinct()).ToList();
+        if (missingCardIds.Any())
+        {
+            var latestSnapshots = await _context.PriceSnapshots
+                .Where(p => missingCardIds.Contains(p.CardId))
+                .GroupBy(p => p.CardId)
+                .Select(g => g.OrderByDescending(p => p.RecordedAt).FirstOrDefault())
+                .Where(p => p != null)
+                .ToListAsync();
+
+            snapshots.AddRange(latestSnapshots!);
+        }
+
+        var result = new List<WatchlistItemResponseDto>();
+
+        foreach (var w in watchlistItems)
+        {
+            var cardSnapshots = snapshots.Where(p => p.CardId == w.CardId).OrderByDescending(p => p.RecordedAt).ToList();
+
+            var lastSnapshot = cardSnapshots.FirstOrDefault();
+
+            var snapshot24h = cardSnapshots.Where(p => p.RecordedAt <= cutoff24h).FirstOrDefault()
+                              ?? cardSnapshots.LastOrDefault();
 
             int? lastPrice = lastSnapshot?.Price;
             int? priceChange24h = null;
 
-            if (lastPrice.HasValue && snapshot24h != null)
+            if (lastPrice.HasValue && snapshot24h != null && snapshot24h.Id != lastSnapshot?.Id)
             {
                 priceChange24h = lastPrice.Value - snapshot24h.Price;
             }
@@ -66,7 +88,6 @@ public class WatchlistService : IWatchlistService
             });
         }
 
-        // Ordenação (RF10)
         return sortBy?.ToLower() switch
         {
             "name" => result.OrderBy(r => r.CardName),

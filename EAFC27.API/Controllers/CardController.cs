@@ -74,7 +74,7 @@ public class CardsController : ControllerBase
             .FirstOrDefaultAsync(c => c.Id == id);
 
         if (card == null)
-            return NotFound(new { message = "Carta não encontrada." });
+            return NotFound(new { message = "Card not found." });
 
         return Ok(new CardResponseDto
         {

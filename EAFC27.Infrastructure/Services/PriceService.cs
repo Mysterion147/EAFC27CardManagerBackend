@@ -53,13 +53,12 @@ public class PriceService : IPriceService
             .Where(p => p.CardId == cardId)
             .AsNoTracking();
 
-        // Filtro de períodos para o gráfico (RF13): 24h, 7d, 30d
         var cutoffDate = period.ToLower() switch
         {
             "24h" => DateTime.UtcNow.AddHours(-24),
             "7d" => DateTime.UtcNow.AddDays(-7),
             "30d" => DateTime.UtcNow.AddDays(-30),
-            _ => DateTime.UtcNow.AddHours(-24)
+            _ => throw new ArgumentException("Invalid period. Use 24h, 7d or 30d.")
         };
 
         query = query.Where(p => p.RecordedAt >= cutoffDate);

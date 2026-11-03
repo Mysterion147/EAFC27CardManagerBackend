@@ -20,7 +20,7 @@ public class PricesController : ControllerBase
     // GET: api/cards/{cardId}/prices?period=24h
     [HttpGet]
     public async Task<ActionResult<IEnumerable<PriceSnapshotResponseDto>>> GetPriceHistory(
-        Guid cardId, 
+        Guid cardId,
         [FromQuery] string period = "24h")
     {
         try
@@ -32,12 +32,16 @@ public class PricesController : ControllerBase
         {
             return NotFound(new { message = ex.Message });
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     // POST: api/cards/{cardId}/prices
     [HttpPost]
     public async Task<ActionResult<PriceSnapshotResponseDto>> AddPriceSnapshot(
-        Guid cardId, 
+        Guid cardId,
         [FromBody] CreatePriceSnapshotDto dto)
     {
         if (!ModelState.IsValid)

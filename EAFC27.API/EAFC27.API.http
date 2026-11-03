@@ -1,6 +1,25 @@
 @EAFC27.API_HostAddress = http://localhost:5041
+@token = cole_o_jwt_aqui
 
-GET {{EAFC27.API_HostAddress}}/weatherforecast/
-Accept: application/json
+### Cadastro
+POST {{EAFC27.API_HostAddress}}/api/auth/register
+Content-Type: application/json
 
-###
+{ "email": "teste@exemplo.com", "password": "senha1234" }
+
+### Login
+POST {{EAFC27.API_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "teste@exemplo.com", "password": "senha1234" }
+
+### Buscar cartas
+GET {{EAFC27.API_HostAddress}}/api/cards?name=mbapp%C3%A9
+
+### Watchlist
+GET {{EAFC27.API_HostAddress}}/api/watchlist
+Authorization: Bearer {{token}}
+
+### Dashboard
+GET {{EAFC27.API_HostAddress}}/api/dashboard
+Authorization: Bearer {{token}}

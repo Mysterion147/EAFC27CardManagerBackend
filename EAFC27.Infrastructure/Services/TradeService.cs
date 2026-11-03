@@ -9,15 +9,18 @@ namespace EAFC27.Infrastructure.Services;
 public class TradeService : ITradeService
 {
     private readonly AppDbContext _context;
+    private readonly TradeCalculationService _calculationService;
 
-    public TradeService(AppDbContext context)
+    public TradeService(AppDbContext context, TradeCalculationService calculationService)
     {
         _context = context;
+        _calculationService = calculationService;
     }
 
     public async Task<IEnumerable<TradeResponseDto>> GetUserTradesAsync(Guid userId)
     {
-        var trades = await _context.Trades
+        // Load all trades for the user in one query to avoid multiple database hits
+        var allTrades = await _context.Trades
             .Where(t => t.UserId == userId)
             .Include(t => t.Card)
             .OrderByDescending(t => t.ExecutedAt)
@@ -26,21 +29,13 @@ public class TradeService : ITradeService
 
         var result = new List<TradeResponseDto>();
 
-        foreach (var trade in trades)
+        foreach (var trade in allTrades)
         {
             decimal profit = 0;
             if (trade.Type == "sell")
             {
-                var buyTrades = await _context.Trades
-                    .Where(t => t.UserId == userId && t.CardId == trade.CardId && t.Type == "buy" && t.ExecutedAt <= trade.ExecutedAt)
-                    .ToListAsync();
-
-                var totalBuyQty = buyTrades.Sum(b => b.Quantity);
-                var totalBuyCost = buyTrades.Sum(b => b.Price * b.Quantity);
-                decimal avgBuyPrice = totalBuyQty > 0 ? (decimal)totalBuyCost / totalBuyQty : 0;
-
-                decimal netSellPrice = trade.Price * 0.95m;
-                profit = (netSellPrice - avgBuyPrice) * trade.Quantity;
+                // The calculation now uses the already loaded list in memory
+                profit = _calculationService.CalculateProfit(allTrades, trade);
             }
 
             result.Add(new TradeResponseDto
@@ -51,7 +46,7 @@ public class TradeService : ITradeService
                 Type = trade.Type,
                 Price = trade.Price,
                 Quantity = trade.Quantity,
-                CalculatedProfit = Math.Round(profit, 2),
+                CalculatedProfit = profit,
                 ExecutedAt = trade.ExecutedAt
             });
         }
@@ -63,21 +58,9 @@ public class TradeService : ITradeService
     {
         var card = await _context.Cards.FindAsync(dto.CardId);
         if (card == null)
-            throw new KeyNotFoundException("Card not found in the catalog.");
+            throw new KeyNotFoundException("Carta não encontrada no catálogo.");
 
-        if (dto.Type == "sell")
-        {
-            var userTrades = await _context.Trades
-                .Where(t => t.UserId == userId && t.CardId == dto.CardId)
-                .ToListAsync();
-
-            int totalBought = userTrades.Where(t => t.Type == "buy").Sum(t => t.Quantity);
-            int totalSold = userTrades.Where(t => t.Type == "sell").Sum(t => t.Quantity);
-            int openPosition = totalBought - totalSold;
-
-            if (dto.Quantity > openPosition)
-                throw new InvalidOperationException($"Exceeds available position. Available: {openPosition} units.");
-        }
+        await _calculationService.ValidateOpenPositionAsync(userId, dto.CardId, dto.Type, dto.Quantity);
 
         var trade = new Trade
         {
@@ -93,20 +76,8 @@ public class TradeService : ITradeService
         await _context.Trades.AddAsync(trade);
         await _context.SaveChangesAsync();
 
-        decimal profit = 0;
-        if (trade.Type == "sell")
-        {
-            var buyTrades = await _context.Trades
-                .Where(t => t.UserId == userId && t.CardId == trade.CardId && t.Type == "buy" && t.Id != trade.Id)
-                .ToListAsync();
-
-            var totalBuyQty = buyTrades.Sum(b => b.Quantity);
-            var totalBuyCost = buyTrades.Sum(b => b.Price * b.Quantity);
-            decimal avgBuyPrice = totalBuyQty > 0 ? (decimal)totalBuyCost / totalBuyQty : 0;
-
-            decimal netSellPrice = trade.Price * 0.95m;
-            profit = (netSellPrice - avgBuyPrice) * trade.Quantity;
-        }
+        var allTrades = await _context.Trades.Where(t => t.UserId == userId).ToListAsync();
+        decimal profit = _calculationService.CalculateProfit(allTrades, trade);
 
         return new TradeResponseDto
         {
@@ -116,7 +87,7 @@ public class TradeService : ITradeService
             Type = trade.Type,
             Price = trade.Price,
             Quantity = trade.Quantity,
-            CalculatedProfit = Math.Round(profit, 2),
+            CalculatedProfit = profit,
             ExecutedAt = trade.ExecutedAt
         };
     }
@@ -130,6 +101,12 @@ public class TradeService : ITradeService
         if (trade == null)
             throw new KeyNotFoundException("Trade not found.");
 
+        var card = await _context.Cards.FindAsync(dto.CardId);
+        if (card == null)
+            throw new KeyNotFoundException("Card not found in the catalog.");
+
+        await _calculationService.ValidateOpenPositionAsync(userId, dto.CardId, dto.Type, dto.Quantity, excludeTradeId: tradeId);
+
         trade.CardId = dto.CardId;
         trade.Type = dto.Type;
         trade.Price = dto.Price;
@@ -137,15 +114,19 @@ public class TradeService : ITradeService
 
         await _context.SaveChangesAsync();
 
+        // reload all trades to recalculate profit
+        var allTrades = await _context.Trades.Where(t => t.UserId == userId).ToListAsync();
+        decimal profit = _calculationService.CalculateProfit(allTrades, trade);
+
         return new TradeResponseDto
         {
             Id = trade.Id,
-            CardId = trade.CardId,
-            CardName = trade.Card.Name,
+            CardId = card.Id,
+            CardName = card.Name,
             Type = trade.Type,
             Price = trade.Price,
             Quantity = trade.Quantity,
-            CalculatedProfit = 0,
+            CalculatedProfit = profit,
             ExecutedAt = trade.ExecutedAt
         };
     }
@@ -158,17 +139,18 @@ public class TradeService : ITradeService
         if (trade == null)
             throw new KeyNotFoundException("Trade not found.");
 
+        await _calculationService.ValidateDeleteAsync(userId, tradeId);
+
         _context.Trades.Remove(trade);
         await _context.SaveChangesAsync();
     }
 
     public async Task<DashboardResponseDto> GetDashboardAsync(Guid userId)
     {
-        var trades = await GetUserTradesAsync(userId);
-        
-        var sellTrades = trades.Where(t => t.Type == "sell").ToList();
-        decimal totalProfit = sellTrades.Sum(t => t.CalculatedProfit);
+        var tradesResponse = await GetUserTradesAsync(userId);
+        var sellTrades = tradesResponse.Where(t => t.Type == "sell").ToList();
 
+        decimal totalProfit = sellTrades.Sum(t => t.CalculatedProfit);
         decimal? bestTrade = sellTrades.Any() ? sellTrades.Max(t => (decimal?)t.CalculatedProfit) : null;
         decimal? worstTrade = sellTrades.Any() ? sellTrades.Min(t => (decimal?)t.CalculatedProfit) : null;
 

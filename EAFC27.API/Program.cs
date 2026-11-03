@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.OpenApi;
+using EAFC27.Infrastructure.BackgroundServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,7 +17,10 @@ builder.Services.AddScoped<ICardSeederService, CardSeederService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IWatchlistService, WatchlistService>();
 builder.Services.AddScoped<IPriceService, PriceService>();
+builder.Services.AddScoped<TradeCalculationService>();
 builder.Services.AddScoped<ITradeService, TradeService>();
+builder.Services.AddScoped<IAlertService, AlertService>();
+builder.Services.AddHostedService<PriceAlertBackgroundService>();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secret = jwtSettings["Secret"]!;
