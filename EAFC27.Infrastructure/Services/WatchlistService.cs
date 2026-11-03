@@ -23,51 +23,51 @@ public class WatchlistService : IWatchlistService
             .AsNoTracking()
             .ToListAsync();
 
-        if (!watchlistItems.Any())
+        if (watchlistItems.Count == 0)
             return new List<WatchlistItemResponseDto>();
 
         var cardIds = watchlistItems.Select(w => w.CardId).Distinct().ToList();
+        var cutoff24h = DateTime.UtcNow.AddHours(-24);
 
-        var now = DateTime.UtcNow;
-        var cutoff24h = now.AddHours(-24);
-
-        var snapshots = await _context.PriceSnapshots
-            .Where(p => cardIds.Contains(p.CardId) && p.RecordedAt >= cutoff24h)
-            .OrderByDescending(p => p.RecordedAt)
+        // one query: last price, baseline (<= 24h ago), oldest in the window and the window size, per card
+        var prices = await _context.Cards
+            .Where(c => cardIds.Contains(c.Id))
+            .Select(c => new
+            {
+                CardId = c.Id,
+                Last = c.PriceSnapshots
+                    .OrderByDescending(p => p.RecordedAt)
+                    .Select(p => (int?)p.Price)
+                    .FirstOrDefault(),
+                Baseline = c.PriceSnapshots
+                    .Where(p => p.RecordedAt <= cutoff24h)
+                    .OrderByDescending(p => p.RecordedAt)
+                    .Select(p => (int?)p.Price)
+                    .FirstOrDefault(),
+                Oldest = c.PriceSnapshots
+                    .Where(p => p.RecordedAt > cutoff24h)
+                    .OrderBy(p => p.RecordedAt)
+                    .Select(p => (int?)p.Price)
+                    .FirstOrDefault(),
+                WindowCount = c.PriceSnapshots.Count(p => p.RecordedAt > cutoff24h)
+            })
             .AsNoTracking()
-            .ToListAsync();
-
-        var missingCardIds = cardIds.Except(snapshots.Select(s => s.CardId).Distinct()).ToList();
-        if (missingCardIds.Any())
-        {
-            var latestSnapshots = await _context.PriceSnapshots
-                .Where(p => missingCardIds.Contains(p.CardId))
-                .GroupBy(p => p.CardId)
-                .Select(g => g.OrderByDescending(p => p.RecordedAt).FirstOrDefault())
-                .Where(p => p != null)
-                .ToListAsync();
-
-            snapshots.AddRange(latestSnapshots!);
-        }
+            .ToDictionaryAsync(x => x.CardId);
 
         var result = new List<WatchlistItemResponseDto>();
 
         foreach (var w in watchlistItems)
         {
-            var cardSnapshots = snapshots.Where(p => p.CardId == w.CardId).OrderByDescending(p => p.RecordedAt).ToList();
+            int? lastPrice = null;
+            int? baseline = null;
 
-            var lastSnapshot = cardSnapshots.FirstOrDefault();
-
-            var snapshot24h = cardSnapshots.Where(p => p.RecordedAt <= cutoff24h).FirstOrDefault()
-                              ?? cardSnapshots.LastOrDefault();
-
-            int? lastPrice = lastSnapshot?.Price;
-            int? priceChange24h = null;
-
-            if (lastPrice.HasValue && snapshot24h != null && snapshot24h.Id != lastSnapshot?.Id)
+            if (prices.TryGetValue(w.CardId, out var p))
             {
-                priceChange24h = lastPrice.Value - snapshot24h.Price;
+                lastPrice = p.Last;
+                baseline = p.Baseline ?? (p.WindowCount > 1 ? p.Oldest : null);
             }
+
+            var (change, changePercent) = ComputeChange(lastPrice, baseline);
 
             result.Add(new WatchlistItemResponseDto
             {
@@ -81,7 +81,8 @@ public class WatchlistService : IWatchlistService
                 TargetBuyPrice = w.BuyTarget,
                 TargetSellPrice = w.SellTarget,
                 LastPrice = lastPrice,
-                PriceChange24h = priceChange24h,
+                PriceChange24h = change,
+                PriceChangePercent24h = changePercent,
                 DistanceToBuy = lastPrice.HasValue ? lastPrice.Value - w.BuyTarget : null,
                 DistanceToSell = lastPrice.HasValue ? w.SellTarget - lastPrice.Value : null,
                 CreatedAt = w.CreatedAt
@@ -92,10 +93,22 @@ public class WatchlistService : IWatchlistService
         {
             "name" => result.OrderBy(r => r.CardName),
             "price" => result.OrderByDescending(r => r.LastPrice ?? 0),
-            "change" => result.OrderByDescending(r => r.PriceChange24h ?? 0),
+            "change" => result.OrderByDescending(r => r.PriceChangePercent24h ?? decimal.MinValue),
             _ => result.OrderBy(r => r.CardName)
         };
     }
+
+    // RN05: variation in coins and in percent relative to the baseline price.
+    public static (int? Change, decimal? Percent) ComputeChange(int? lastPrice, int? baselinePrice)
+    {
+        if (!lastPrice.HasValue || !baselinePrice.HasValue || baselinePrice.Value <= 0)
+            return (null, null);
+
+        int change = lastPrice.Value - baselinePrice.Value;
+        decimal percent = Math.Round((decimal)change / baselinePrice.Value * 100m, 2);
+        return (change, percent);
+    }
+
 
     public async Task<WatchlistItemResponseDto> AddToWatchlistAsync(Guid userId, CreateWatchlistDto dto)
     {
@@ -146,6 +159,12 @@ public class WatchlistService : IWatchlistService
         if (item == null)
             throw new KeyNotFoundException("Watchlist item not found.");
 
+        if (item.BuyTarget != dto.BuyTarget)
+            item.BuyAlertTriggered = false;
+            
+        if (item.SellTarget != dto.SellTarget)
+            item.SellAlertTriggered = false;
+
         item.BuyTarget = dto.BuyTarget;
         item.SellTarget = dto.SellTarget;
 
@@ -176,10 +195,5 @@ public class WatchlistService : IWatchlistService
 
         _context.WatchlistItems.Remove(item);
         await _context.SaveChangesAsync();
-    }
-
-    public Task<IEnumerable<WatchlistItemResponseDto>> GetUserWatchlistAsync(Guid userId)
-    {
-        throw new NotImplementedException();
     }
 }

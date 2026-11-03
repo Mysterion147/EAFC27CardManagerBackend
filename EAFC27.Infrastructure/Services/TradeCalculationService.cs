@@ -13,67 +13,69 @@ public class TradeCalculationService
         _context = context;
     }
 
-    public decimal CalculateProfit(IEnumerable<Trade> historicalTrades, Trade targetSellTrade)
+    // RN01 e RN02: pure calculation, no database access.
+    public static decimal CalculateProfit(IEnumerable<Trade> historicalTrades, Trade targetSellTrade)
     {
         if (targetSellTrade.Type != "sell") return 0;
 
         var buyTrades = historicalTrades
-            .Where(t => t.CardId == targetSellTrade.CardId && t.Type == "buy" && t.ExecutedAt <= targetSellTrade.ExecutedAt && t.Id != targetSellTrade.Id)
+            .Where(t => t.CardId == targetSellTrade.CardId
+                        && t.Type == "buy"
+                        && t.ExecutedAt <= targetSellTrade.ExecutedAt
+                        && t.Id != targetSellTrade.Id)
             .ToList();
 
         var totalBuyQty = buyTrades.Sum(b => b.Quantity);
         var totalBuyCost = buyTrades.Sum(b => b.Price * b.Quantity);
         decimal avgBuyPrice = totalBuyQty > 0 ? (decimal)totalBuyCost / totalBuyQty : 0;
 
-        // RN01 & RN02: Preço de venda líquido (preço * 0.95) menos custo médio de compra
+        // net sell price = price * 0.95 (5% market fee)
         decimal netSellPrice = targetSellTrade.Price * 0.95m;
         return Math.Round((netSellPrice - avgBuyPrice) * targetSellTrade.Quantity, 2);
     }
 
-    public async Task ValidateOpenPositionAsync(Guid userId, Guid cardId, string newType, int newQuantity, Guid? excludeTradeId = null)
+    // RN04: the open position of a card can never be negative at ANY point in time.
+    public static void EnsureNonNegativeBalance(IEnumerable<Trade> trades)
     {
-        var trades = await _context.Trades
-            .Where(t => t.UserId == userId && t.CardId == cardId)
-            .ToListAsync();
+        var balance = 0;
 
-        if (excludeTradeId.HasValue)
+        foreach (var t in trades
+                     .OrderBy(t => t.ExecutedAt)
+                     .ThenBy(t => t.Type == "buy" ? 0 : 1)) // same timestamp: buys first
         {
-            trades = trades.Where(t => t.Id != excludeTradeId.Value).ToList();
-        }
+            balance += t.Type == "buy" ? t.Quantity : -t.Quantity;
 
-        int totalBought = trades.Where(t => t.Type == "buy").Sum(t => t.Quantity);
-        int totalSold = trades.Where(t => t.Type == "sell").Sum(t => t.Quantity);
-
-        if (newType == "buy") totalBought += newQuantity;
-        if (newType == "sell") totalSold += newQuantity;
-
-        // RN04: Posição aberta nunca pode ser negativa
-        if (totalBought - totalSold < 0)
-        {
-            throw new InvalidOperationException("Operation violates the open position rule. The quantity sold would exceed the total purchased.");
+            if (balance < 0)
+                throw new InvalidOperationException(
+                    "Operation would result in a negative open position (sold quantity would exceed purchased quantity).");
         }
     }
 
-    public async Task ValidateDeleteAsync(Guid userId, Guid tradeId)
+    // Simulates the state AFTER a change (add / update / delete) for each affected card
+    // and validates it before anything is saved.
+    //   add:    removed = null,  added = new trade
+    //   update: removed = old,   added = updated copy (may have a different CardId)
+    //   delete: removed = trade, added = null
+    public async Task ValidateAfterChangeAsync(
+        Guid userId,
+        IEnumerable<Guid> affectedCardIds,
+        Trade? removed,
+        Trade? added)
     {
-        var trade = await _context.Trades.FirstOrDefaultAsync(t => t.Id == tradeId && t.UserId == userId);
-        if (trade == null || trade.Type != "buy") return;
-
-        var cardTrades = await _context.Trades
-            .Where(t => t.UserId == userId && t.CardId == trade.CardId && t.Id != tradeId)
-            .OrderBy(t => t.ExecutedAt)
-            .ToListAsync();
-
-        int runningBalance = 0;
-        foreach (var t in cardTrades)
+        foreach (var cardId in affectedCardIds.Distinct())
         {
-            if (t.Type == "buy") runningBalance += t.Quantity;
-            else runningBalance -= t.Quantity;
+            var trades = await _context.Trades
+                .AsNoTracking()
+                .Where(t => t.UserId == userId && t.CardId == cardId)
+                .ToListAsync();
 
-            if (runningBalance < 0)
-            {
-                throw new InvalidOperationException("It's not possible to delete this purchase as it would result in a negative open position in subsequent transactions.");
-            }
+            if (removed != null)
+                trades.RemoveAll(t => t.Id == removed.Id);
+
+            if (added != null && added.CardId == cardId)
+                trades.Add(added);
+
+            EnsureNonNegativeBalance(trades);
         }
     }
 }

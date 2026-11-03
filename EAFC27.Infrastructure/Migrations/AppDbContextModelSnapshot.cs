@@ -182,6 +182,9 @@ namespace EAFC27.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("BuyAlertTriggered")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("BuyTarget")
                         .HasColumnType("integer");
 
@@ -190,6 +193,9 @@ namespace EAFC27.Infrastructure.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("SellAlertTriggered")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("SellTarget")
                         .HasColumnType("integer");

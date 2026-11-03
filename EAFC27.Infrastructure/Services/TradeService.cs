@@ -34,8 +34,7 @@ public class TradeService : ITradeService
             decimal profit = 0;
             if (trade.Type == "sell")
             {
-                // The calculation now uses the already loaded list in memory
-                profit = _calculationService.CalculateProfit(allTrades, trade);
+                profit = TradeCalculationService.CalculateProfit(allTrades, trade);
             }
 
             result.Add(new TradeResponseDto
@@ -58,9 +57,7 @@ public class TradeService : ITradeService
     {
         var card = await _context.Cards.FindAsync(dto.CardId);
         if (card == null)
-            throw new KeyNotFoundException("Carta não encontrada no catálogo.");
-
-        await _calculationService.ValidateOpenPositionAsync(userId, dto.CardId, dto.Type, dto.Quantity);
+            throw new KeyNotFoundException("Card not found in the catalog.");
 
         var trade = new Trade
         {
@@ -73,11 +70,15 @@ public class TradeService : ITradeService
             ExecutedAt = DateTime.UtcNow
         };
 
+        // validate before saving
+        await _calculationService.ValidateAfterChangeAsync(
+            userId, new[] { dto.CardId }, removed: null, added: trade);
+
         await _context.Trades.AddAsync(trade);
         await _context.SaveChangesAsync();
 
         var allTrades = await _context.Trades.Where(t => t.UserId == userId).ToListAsync();
-        decimal profit = _calculationService.CalculateProfit(allTrades, trade);
+        var profit = TradeCalculationService.CalculateProfit(allTrades, trade);
 
         return new TradeResponseDto
         {
@@ -95,7 +96,6 @@ public class TradeService : ITradeService
     public async Task<TradeResponseDto> UpdateTradeAsync(Guid userId, Guid tradeId, CreateTradeDto dto)
     {
         var trade = await _context.Trades
-            .Include(t => t.Card)
             .FirstOrDefaultAsync(t => t.Id == tradeId && t.UserId == userId);
 
         if (trade == null)
@@ -105,7 +105,21 @@ public class TradeService : ITradeService
         if (card == null)
             throw new KeyNotFoundException("Card not found in the catalog.");
 
-        await _calculationService.ValidateOpenPositionAsync(userId, dto.CardId, dto.Type, dto.Quantity, excludeTradeId: tradeId);
+        // copy with the new values
+        var updated = new Trade
+        {
+            Id = trade.Id,
+            UserId = userId,
+            CardId = dto.CardId,
+            Type = dto.Type,
+            Price = dto.Price,
+            Quantity = dto.Quantity,
+            ExecutedAt = trade.ExecutedAt
+        };
+
+        // validates the OLD card and the NEW card
+        await _calculationService.ValidateAfterChangeAsync(
+            userId, new[] { trade.CardId, dto.CardId }, removed: trade, added: updated);
 
         trade.CardId = dto.CardId;
         trade.Type = dto.Type;
@@ -114,9 +128,8 @@ public class TradeService : ITradeService
 
         await _context.SaveChangesAsync();
 
-        // reload all trades to recalculate profit
         var allTrades = await _context.Trades.Where(t => t.UserId == userId).ToListAsync();
-        decimal profit = _calculationService.CalculateProfit(allTrades, trade);
+        var profit = TradeCalculationService.CalculateProfit(allTrades, trade);
 
         return new TradeResponseDto
         {
@@ -139,11 +152,13 @@ public class TradeService : ITradeService
         if (trade == null)
             throw new KeyNotFoundException("Trade not found.");
 
-        await _calculationService.ValidateDeleteAsync(userId, tradeId);
+        await _calculationService.ValidateAfterChangeAsync(
+            userId, new[] { trade.CardId }, removed: trade, added: null);
 
         _context.Trades.Remove(trade);
         await _context.SaveChangesAsync();
     }
+
 
     public async Task<DashboardResponseDto> GetDashboardAsync(Guid userId)
     {

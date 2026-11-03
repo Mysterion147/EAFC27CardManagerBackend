@@ -63,6 +63,10 @@ public class TradesController : ControllerBase
             var result = await _tradeService.UpdateTradeAsync(userId, id, dto);
             return Ok(result);
         }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
         catch (KeyNotFoundException ex)
         {
             return NotFound(new { message = ex.Message });
@@ -77,6 +81,10 @@ public class TradesController : ControllerBase
             var userId = GetUserId();
             await _tradeService.DeleteTradeAsync(userId, id);
             return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (KeyNotFoundException ex)
         {
