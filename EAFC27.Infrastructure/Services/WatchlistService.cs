@@ -15,13 +15,39 @@ public class WatchlistService : IWatchlistService
         _context = context;
     }
 
-    public async Task<IEnumerable<WatchlistItemResponseDto>> GetUserWatchlistAsync(Guid userId)
+    public async Task<IEnumerable<WatchlistItemResponseDto>> GetUserWatchlistAsync(Guid userId, string? sortBy = null)
     {
-        return await _context.WatchlistItems
+        var items = await _context.WatchlistItems
             .Where(w => w.UserId == userId)
             .Include(w => w.Card)
             .AsNoTracking()
-            .Select(w => new WatchlistItemResponseDto
+            .ToListAsync();
+
+        var result = new List<WatchlistItemResponseDto>();
+        var now = DateTime.UtcNow;
+        var cutoff24h = now.AddHours(-24);
+
+        foreach (var w in items)
+        {
+            var lastSnapshot = await _context.PriceSnapshots
+                .Where(p => p.CardId == w.CardId)
+                .OrderByDescending(p => p.RecordedAt)
+                .FirstOrDefaultAsync();
+
+            var snapshot24h = await _context.PriceSnapshots
+                .Where(p => p.CardId == w.CardId && p.RecordedAt <= cutoff24h)
+                .OrderByDescending(p => p.RecordedAt)
+                .FirstOrDefaultAsync();
+
+            int? lastPrice = lastSnapshot?.Price;
+            int? priceChange24h = null;
+
+            if (lastPrice.HasValue && snapshot24h != null)
+            {
+                priceChange24h = lastPrice.Value - snapshot24h.Price;
+            }
+
+            result.Add(new WatchlistItemResponseDto
             {
                 Id = w.Id,
                 CardId = w.CardId,
@@ -32,9 +58,22 @@ public class WatchlistService : IWatchlistService
                 Rarity = w.Card.Rarity,
                 TargetBuyPrice = w.BuyTarget,
                 TargetSellPrice = w.SellTarget,
+                LastPrice = lastPrice,
+                PriceChange24h = priceChange24h,
+                DistanceToBuy = lastPrice.HasValue ? lastPrice.Value - w.BuyTarget : null,
+                DistanceToSell = lastPrice.HasValue ? w.SellTarget - lastPrice.Value : null,
                 CreatedAt = w.CreatedAt
-            })
-            .ToListAsync();
+            });
+        }
+
+        // Ordenação (RF10)
+        return sortBy?.ToLower() switch
+        {
+            "name" => result.OrderBy(r => r.CardName),
+            "price" => result.OrderByDescending(r => r.LastPrice ?? 0),
+            "change" => result.OrderByDescending(r => r.PriceChange24h ?? 0),
+            _ => result.OrderBy(r => r.CardName)
+        };
     }
 
     public async Task<WatchlistItemResponseDto> AddToWatchlistAsync(Guid userId, CreateWatchlistDto dto)
@@ -116,5 +155,10 @@ public class WatchlistService : IWatchlistService
 
         _context.WatchlistItems.Remove(item);
         await _context.SaveChangesAsync();
+    }
+
+    public Task<IEnumerable<WatchlistItemResponseDto>> GetUserWatchlistAsync(Guid userId)
+    {
+        throw new NotImplementedException();
     }
 }

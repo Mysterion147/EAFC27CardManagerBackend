@@ -16,6 +16,7 @@ builder.Services.AddScoped<ICardSeederService, CardSeederService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IWatchlistService, WatchlistService>();
 builder.Services.AddScoped<IPriceService, PriceService>();
+builder.Services.AddScoped<ITradeService, TradeService>();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secret = jwtSettings["Secret"]!;

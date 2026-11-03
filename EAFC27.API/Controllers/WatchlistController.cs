@@ -27,7 +27,7 @@ public class WatchlistController : ControllerBase
 
     // GET: api/Watchlist
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<WatchlistItemResponseDto>>> GetUserWatchlist()
+    public async Task<ActionResult<IEnumerable<WatchlistItemResponseDto>>> GetUserWatchlist([FromQuery] string? sortBy) // name, price, change
     {
         var userId = GetUserId();
         var items = await _watchlistService.GetUserWatchlistAsync(userId);
