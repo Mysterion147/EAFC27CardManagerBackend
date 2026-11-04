@@ -52,7 +52,7 @@ public class PriceAlertBackgroundService : BackgroundService
         }
     }
 
-    private async Task EvaluatePricesAndGenerateAlertsAsync(AppDbContext context, CancellationToken ct)
+    internal async Task EvaluatePricesAndGenerateAlertsAsync(AppDbContext context, CancellationToken ct) // internal so Tests can call it
     {
         // tracked on purpose: we update the BuyAlertTriggered / SellAlertTriggered flags
         var watchlistItems = await context.WatchlistItems.ToListAsync(ct);

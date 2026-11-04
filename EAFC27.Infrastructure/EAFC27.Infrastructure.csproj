@@ -22,4 +22,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="EAFC27.Tests" />
+  </ItemGroup>
+
 </Project>
