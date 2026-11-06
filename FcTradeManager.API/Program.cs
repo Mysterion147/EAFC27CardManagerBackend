@@ -103,7 +103,7 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var seeder = services.GetRequiredService<ICardSeederService>();
-    var csvPath = Path.Combine(Directory.GetCurrentDirectory(), "Data", "cards.csv");
+    var csvPath = Path.Combine(AppContext.BaseDirectory, "Data", "cards.csv");
 
     await seeder.SeedCardsAsync(csvPath);
 }
