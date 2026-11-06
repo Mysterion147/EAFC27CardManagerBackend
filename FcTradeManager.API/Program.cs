@@ -78,18 +78,25 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-//  CORS
+//  CORS (configurable via appsettings.json)
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? Array.Empty<string>();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:5173") // change
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
 });
 
 var app = builder.Build();
+
+if (!app.Environment.IsDevelopment() && allowedOrigins.Length == 0)
+    app.Logger.LogWarning("Cors:AllowedOrigins is empty: browsers will block requests from any front-end.");
 
 // Seed the database with card data from CSV
 using (var scope = app.Services.CreateScope())
