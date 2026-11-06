@@ -2,16 +2,19 @@ using FcTradeManager.Application.Interfaces;
 using FcTradeManager.Domain.Entities;
 using FcTradeManager.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace FcTradeManager.Infrastructure.Services;
 
 public class CardSeederService : ICardSeederService
 {
     private readonly AppDbContext _context;
+    private readonly ILogger<CardSeederService> _logger;
 
-    public CardSeederService(AppDbContext context)
+    public CardSeederService(AppDbContext context, ILogger<CardSeederService> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     public async Task SeedCardsAsync(string csvFilePath)
@@ -21,7 +24,10 @@ public class CardSeederService : ICardSeederService
             return;
 
         if (!File.Exists(csvFilePath))
+        {
+            _logger.LogWarning("Cards CSV not found at {Path}; the card catalog will stay empty.", csvFilePath);
             return;
+        }
 
         var cards = new List<Card>();
         var lines = await File.ReadAllLinesAsync(csvFilePath);
@@ -30,11 +36,11 @@ public class CardSeederService : ICardSeederService
         for (int i = 1; i < lines.Length; i++)
         {
             var line = lines[i];
-            if (string.IsNullOrWhiteSpace(line)) 
+            if (string.IsNullOrWhiteSpace(line))
                 continue;
 
             var values = line.Split(',');
-            if (values.Length < 6) 
+            if (values.Length < 6)
                 continue;
 
             cards.Add(new Card
