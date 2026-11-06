@@ -10,8 +10,13 @@ using FcTradeManager.Infrastructure.BackgroundServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+    throw new InvalidOperationException(
+        "ConnectionStrings:DefaultConnection is not configured. Use user-secrets or the ConnectionStrings__DefaultConnection environment variable.");
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 builder.Services.AddScoped<ICardSeederService, CardSeederService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -23,7 +28,10 @@ builder.Services.AddScoped<IAlertService, AlertService>();
 builder.Services.AddHostedService<PriceAlertBackgroundService>();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secret = jwtSettings["Secret"]!;
+var secret = jwtSettings["Secret"];
+if (string.IsNullOrWhiteSpace(secret) || Encoding.UTF8.GetByteCount(secret) < 32)
+    throw new InvalidOperationException(
+        "JwtSettings:Secret is missing or shorter than 32 bytes. Use user-secrets or the JwtSettings__Secret environment variable.");
 
 builder.Services.AddAuthentication(options =>
 {
@@ -89,7 +97,7 @@ using (var scope = app.Services.CreateScope())
     var services = scope.ServiceProvider;
     var seeder = services.GetRequiredService<ICardSeederService>();
     var csvPath = Path.Combine(Directory.GetCurrentDirectory(), "Data", "cards.csv");
-    
+
     await seeder.SeedCardsAsync(csvPath);
 }
 
