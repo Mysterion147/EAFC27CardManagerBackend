@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="FcTradeManager.API/FcTradeManager.API.csproj" />
+  <Project Path="FcTradeManager.Application/FcTradeManager.Application.csproj" />
+  <Project Path="FcTradeManager.Domain/FcTradeManager.Domain.csproj" />
+  <Project Path="FcTradeManager.Infrastructure/FcTradeManager.Infrastructure.csproj" />
+  <Project Path="FcTradeManager.Tests/FcTradeManager.Tests.csproj" />
+</Solution>
