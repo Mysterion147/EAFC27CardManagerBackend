@@ -1,3 +1,4 @@
+using EAFC27.Application.DTOs;
 using FcTradeManager.Application.DTOs;
 using FcTradeManager.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
@@ -21,12 +22,17 @@ public class CardsController : ControllerBase
     // GET api/cards
     [AllowAnonymous]
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<CardResponseDto>>> GetCards(
+    public async Task<ActionResult<PagedResultDto<CardResponseDto>>> GetCards(
         [FromQuery] string? name,
         [FromQuery] int? overall,
         [FromQuery] string? position,
-        [FromQuery] string? rarity)
+        [FromQuery] string? rarity,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
     {
+        if (page < 1 || pageSize < 1 || pageSize > 100)
+            return BadRequest(new { message = "page must be >= 1 and pageSize must be between 1 and 100." });
+
         var query = _context.Cards.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(name))
@@ -49,7 +55,13 @@ public class CardsController : ControllerBase
             query = query.Where(c => c.Rarity.ToLower() == rarity.ToLower());
         }
 
-        var cards = await query
+        var totalItems = await query.CountAsync();
+
+        var items = await query
+            .OrderBy(c => c.Name)
+            .ThenBy(c => c.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(c => new CardResponseDto
             {
                 Id = c.Id,
@@ -62,7 +74,13 @@ public class CardsController : ControllerBase
             })
             .ToListAsync();
 
-        return Ok(cards);
+        return Ok(new PagedResultDto<CardResponseDto>
+        {
+            Items = items,
+            Page = page,
+            PageSize = pageSize,
+            TotalItems = totalItems
+        });
     }
 
     // GET api/cards/{id}
