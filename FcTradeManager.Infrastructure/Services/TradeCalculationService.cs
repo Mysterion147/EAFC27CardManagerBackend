@@ -1,3 +1,4 @@
+using EAFC27.Domain.Enums;
 using FcTradeManager.Domain.Entities;
 using FcTradeManager.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -16,11 +17,11 @@ public class TradeCalculationService
     // RN01 e RN02: pure calculation, no database access.
     public static decimal CalculateProfit(IEnumerable<Trade> historicalTrades, Trade targetSellTrade)
     {
-        if (targetSellTrade.Type != "sell") return 0;
+        if (targetSellTrade.Type != TradeType.Sell) return 0;
 
         var buyTrades = historicalTrades
             .Where(t => t.CardId == targetSellTrade.CardId
-                        && t.Type == "buy"
+                        && t.Type == TradeType.Buy
                         && t.ExecutedAt <= targetSellTrade.ExecutedAt
                         && t.Id != targetSellTrade.Id)
             .ToList();
@@ -41,9 +42,9 @@ public class TradeCalculationService
 
         foreach (var t in trades
                      .OrderBy(t => t.ExecutedAt)
-                     .ThenBy(t => t.Type == "buy" ? 0 : 1)) // same timestamp: buys first
+                     .ThenBy(t => t.Type == TradeType.Buy ? 0 : 1)) // same timestamp: buys first
         {
-            balance += t.Type == "buy" ? t.Quantity : -t.Quantity;
+            balance += t.Type == TradeType.Buy ? t.Quantity : -t.Quantity;
 
             if (balance < 0)
                 throw new InvalidOperationException(

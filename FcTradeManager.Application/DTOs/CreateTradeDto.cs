@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using EAFC27.Domain.Enums;
 
 namespace FcTradeManager.Application.DTOs;
 
@@ -8,8 +9,8 @@ public class CreateTradeDto
     public Guid CardId { get; set; }
 
     [Required]
-    [RegularExpression("^(buy|sell)$", ErrorMessage = "The type must be 'buy' or 'sell'.")]
-    public string Type { get; set; } = "buy";
+    [EnumDataType(typeof(TradeType))]
+    public TradeType Type { get; set; }
 
     [Range(200, 15000000, ErrorMessage = "The price must be between 200 and 15,000,000.")]
     public int Price { get; set; }

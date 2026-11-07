@@ -1,3 +1,4 @@
+using EAFC27.Domain.Enums;
 using FcTradeManager.Application.DTOs;
 using FcTradeManager.Application.Interfaces;
 using FcTradeManager.Domain.Entities;
@@ -15,7 +16,7 @@ public class PriceService : IPriceService
         _context = context;
     }
 
-    public async Task<PriceSnapshotResponseDto> AddPriceSnapshotAsync(Guid cardId, CreatePriceSnapshotDto dto, string source = "manual")
+    public async Task<PriceSnapshotResponseDto> AddPriceSnapshotAsync(Guid cardId, CreatePriceSnapshotDto dto, PriceSource source = PriceSource.Manual)
     {
         var card = await _context.Cards.FindAsync(cardId);
         if (card == null)

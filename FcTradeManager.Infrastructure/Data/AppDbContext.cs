@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using FcTradeManager.Domain.Entities;
+using EAFC27.Infrastructure.Data;
 
 namespace FcTradeManager.Infrastructure.Data;
 
@@ -34,5 +35,14 @@ public class AppDbContext : DbContext
             .Property(c => c.Name)
             .IsRequired()
             .HasMaxLength(150);
+
+        modelBuilder.Entity<Trade>().Property(t => t.Type)
+            .HasLowercaseStringConversion();
+
+        modelBuilder.Entity<Alert>().Property(a => a.Kind)
+            .HasLowercaseStringConversion();
+
+        modelBuilder.Entity<PriceSnapshot>().Property(p => p.Source)
+            .HasLowercaseStringConversion();
     }
 }

@@ -1,3 +1,5 @@
+using EAFC27.Domain.Enums;
+
 namespace FcTradeManager.Application.DTOs;
 
 public class PriceSnapshotResponseDto
@@ -5,6 +7,6 @@ public class PriceSnapshotResponseDto
     public Guid Id { get; set; }
     public Guid CardId { get; set; }
     public int Price { get; set; }
-    public string Source { get; set; } = string.Empty;
+    public PriceSource Source { get; set; }
     public DateTime RecordedAt { get; set; }
 }

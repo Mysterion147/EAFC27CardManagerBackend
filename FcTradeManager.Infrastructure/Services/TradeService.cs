@@ -1,3 +1,4 @@
+using EAFC27.Domain.Enums;
 using FcTradeManager.Application.DTOs;
 using FcTradeManager.Application.Interfaces;
 using FcTradeManager.Domain.Entities;
@@ -32,7 +33,7 @@ public class TradeService : ITradeService
         foreach (var trade in allTrades)
         {
             decimal profit = 0;
-            if (trade.Type == "sell")
+            if (trade.Type == TradeType.Sell)
             {
                 profit = TradeCalculationService.CalculateProfit(allTrades, trade);
             }
@@ -163,7 +164,7 @@ public class TradeService : ITradeService
     public async Task<DashboardResponseDto> GetDashboardAsync(Guid userId)
     {
         var tradesResponse = await GetUserTradesAsync(userId);
-        var sellTrades = tradesResponse.Where(t => t.Type == "sell").ToList();
+        var sellTrades = tradesResponse.Where(t => t.Type == TradeType.Sell).ToList();
 
         decimal totalProfit = sellTrades.Sum(t => t.CalculatedProfit);
         decimal? bestTrade = sellTrades.Any() ? sellTrades.Max(t => (decimal?)t.CalculatedProfit) : null;
@@ -180,7 +181,7 @@ public class TradeService : ITradeService
             {
                 CardId = g.Key.CardId,
                 CardName = g.Key.Name,
-                Quantity = g.Where(t => t.Type == "buy").Sum(t => t.Quantity) - g.Where(t => t.Type == "sell").Sum(t => t.Quantity)
+                Quantity = g.Where(t => t.Type == TradeType.Buy).Sum(t => t.Quantity) - g.Where(t => t.Type == TradeType.Sell).Sum(t => t.Quantity)
             })
             .Where(p => p.Quantity > 0)
             .ToList();
