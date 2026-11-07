@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using FcTradeManager.Domain.Entities;
-using EAFC27.Infrastructure.Data;
 
 namespace FcTradeManager.Infrastructure.Data;
 
@@ -14,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<PriceSnapshot> PriceSnapshots => Set<PriceSnapshot>();
     public DbSet<Trade> Trades => Set<Trade>();
     public DbSet<Alert> Alerts => Set<Alert>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -44,5 +44,9 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<PriceSnapshot>().Property(p => p.Source)
             .HasLowercaseStringConversion();
+
+        modelBuilder.Entity<RefreshToken>()
+            .HasIndex(r => r.TokenHash)
+            .IsUnique();
     }
 }

@@ -49,4 +49,26 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = ex.Message });
         }
     }
+
+    // POST: api/auth/refresh
+    [HttpPost("refresh")]
+    public async Task<ActionResult<AuthResponseDto>> Refresh([FromBody] RefreshRequestDto dto)
+    {
+        try
+        {
+            return Ok(await _authService.RefreshAsync(dto.RefreshToken));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+    }
+
+    // POST: api/auth/logout
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody] RefreshRequestDto dto)
+    {
+        await _authService.LogoutAsync(dto.RefreshToken);
+        return NoContent();
+    }
 }

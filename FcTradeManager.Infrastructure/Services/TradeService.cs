@@ -1,4 +1,4 @@
-using EAFC27.Domain.Enums;
+using FcTradeManager.Domain.Enums;
 using FcTradeManager.Application.DTOs;
 using FcTradeManager.Application.Interfaces;
 using FcTradeManager.Domain.Entities;

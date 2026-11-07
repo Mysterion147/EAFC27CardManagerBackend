@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using EAFC27.Domain.Enums;
+using FcTradeManager.Domain.Enums;
 
 namespace FcTradeManager.Application.DTOs;
 
