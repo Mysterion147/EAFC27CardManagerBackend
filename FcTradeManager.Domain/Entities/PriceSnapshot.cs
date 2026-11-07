@@ -1,3 +1,5 @@
+using EAFC27.Domain.Enums;
+
 namespace FcTradeManager.Domain.Entities;
 
 public class PriceSnapshot
@@ -7,6 +9,6 @@ public class PriceSnapshot
     public Card Card { get; set; } = null!;
     
     public int Price { get; set; }
-    public string Source { get; set; } = "manual"; // "manual" or "simulated"
+    public PriceSource Source { get; set; } = PriceSource.Manual;
     public DateTime RecordedAt { get; set; } = DateTime.UtcNow;
 }

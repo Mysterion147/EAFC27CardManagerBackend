@@ -1,3 +1,4 @@
+using EAFC27.Domain.Enums;
 using FcTradeManager.Domain.Entities;
 using FcTradeManager.Domain.Rules;
 using FcTradeManager.Infrastructure.Data;
@@ -86,14 +87,14 @@ public class PriceAlertBackgroundService : BackgroundService
 
             if (result.FireBuy)
             {
-                context.Alerts.Add(NewAlert(item, "buy", price));
+                context.Alerts.Add(NewAlert(item, AlertKind.Buy, price));
                 _logger.LogInformation("buy alert generated for user {UserId} on card {CardId} at price {Price}",
                     item.UserId, item.CardId, price);
             }
 
             if (result.FireSell)
             {
-                context.Alerts.Add(NewAlert(item, "sell", price));
+                context.Alerts.Add(NewAlert(item, AlertKind.Sell, price));
                 _logger.LogInformation("sell alert generated for user {UserId} on card {CardId} at price {Price}",
                     item.UserId, item.CardId, price);
             }
@@ -105,7 +106,7 @@ public class PriceAlertBackgroundService : BackgroundService
         await context.SaveChangesAsync(ct);
     }
 
-    private static Alert NewAlert(WatchlistItem item, string kind, int price) => new()
+    private static Alert NewAlert(WatchlistItem item, AlertKind kind, int price) => new()
     {
         Id = Guid.NewGuid(),
         UserId = item.UserId,

@@ -1,3 +1,4 @@
+using EAFC27.Domain.Enums;
 using FcTradeManager.Domain.Entities;
 using FcTradeManager.Infrastructure.Data;
 
@@ -31,7 +32,7 @@ public static class Seed
     }
 
     public static Trade AddTrade(AppDbContext db, Guid userId, Guid cardId,
-        string type, int price, int quantity, DateTime executedAt)
+        TradeType type, int price, int quantity, DateTime executedAt)
     {
         var trade = new Trade
         {
@@ -49,7 +50,7 @@ public static class Seed
     }
 
     public static PriceSnapshot AddSnapshot(AppDbContext db, Guid cardId,
-        int price, DateTime recordedAt, string source = "manual")
+        int price, DateTime recordedAt, PriceSource source = PriceSource.Manual)
     {
         var snapshot = new PriceSnapshot
         {
@@ -83,7 +84,7 @@ public static class Seed
     }
 
     public static Alert AddAlert(AppDbContext db, Guid userId, Guid cardId,
-        string kind, int price, DateTime createdAt, DateTime? readAt = null)
+        AlertKind kind, int price, DateTime createdAt, DateTime? readAt = null)
     {
         var alert = new Alert
         {

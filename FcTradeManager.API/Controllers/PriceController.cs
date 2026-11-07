@@ -1,3 +1,4 @@
+using EAFC27.Domain.Enums;
 using FcTradeManager.Application.DTOs;
 using FcTradeManager.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -49,7 +50,7 @@ public class PricesController : ControllerBase
 
         try
         {
-            var result = await _priceService.AddPriceSnapshotAsync(cardId, dto, source: "manual");
+            var result = await _priceService.AddPriceSnapshotAsync(cardId, dto, source: PriceSource.Manual);
             return Ok(result);
         }
         catch (KeyNotFoundException ex)

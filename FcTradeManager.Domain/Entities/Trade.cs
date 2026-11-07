@@ -1,3 +1,5 @@
+using EAFC27.Domain.Enums;
+
 namespace FcTradeManager.Domain.Entities;
 
 public class Trade
@@ -9,7 +11,7 @@ public class Trade
     public Guid CardId { get; set; }
     public Card Card { get; set; } = null!;
     
-    public string Type { get; set; } = string.Empty; // "buy" ou "sell"
+    public TradeType Type { get; set; }
     public int Price { get; set; }
     public int Quantity { get; set; }
     public DateTime ExecutedAt { get; set; } = DateTime.UtcNow;
