@@ -1,6 +1,6 @@
-namespace EAFC27.Application.DTOs;
+namespace FcTradeManager.Application.DTOs;
 
-public class PagedResultDto<T>
+public class PageResultDto<T>
 {
     public IReadOnlyList<T> Items { get; set; } = Array.Empty<T>();
     public int Page { get; set; }

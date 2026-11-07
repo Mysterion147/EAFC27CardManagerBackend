@@ -1,4 +1,3 @@
-using EAFC27.Application.DTOs;
 using FcTradeManager.Application.DTOs;
 using FcTradeManager.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
@@ -22,7 +21,7 @@ public class CardsController : ControllerBase
     // GET api/cards
     [AllowAnonymous]
     [HttpGet]
-    public async Task<ActionResult<PagedResultDto<CardResponseDto>>> GetCards(
+    public async Task<ActionResult<PageResultDto<CardResponseDto>>> GetCards(
         [FromQuery] string? name,
         [FromQuery] int? overall,
         [FromQuery] string? position,
@@ -74,7 +73,7 @@ public class CardsController : ControllerBase
             })
             .ToListAsync();
 
-        return Ok(new PagedResultDto<CardResponseDto>
+        return Ok(new PageResultDto<CardResponseDto>
         {
             Items = items,
             Page = page,
