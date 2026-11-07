@@ -1,4 +1,4 @@
-namespace EAFC27.Domain.Enums;
+namespace FcTradeManager.Domain.Enums;
 
 public enum TradeType { Buy = 1, Sell = 2 }
 public enum AlertKind { Buy = 1, Sell = 2 }

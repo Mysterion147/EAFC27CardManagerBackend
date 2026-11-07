@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace EAFC27.Infrastructure.Data;
+namespace FcTradeManager.Infrastructure.Data;
 
 public static class EnumPropertyExtensions
 {
